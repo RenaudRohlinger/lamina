@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.1.18",
   "description": "🍰 An extensable, layer based shader material for ThreeJS.",
-  "main": "./index.cjs",
-  "module": "./index.js",
-  "types": "./index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "**"
   ],
@@ -13,18 +13,18 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./index.d.ts",
-      "require": "./index.cjs.js",
-      "import": "./index.js"
+      "require": "./dist/index.cjs.js",
+      "import": "./dist/index.js"
     },
-    "./vanilla": {
-      "types": "./vanilla.d.ts",
-      "require": "./vanilla.cjs.js",
-      "import": "./vanilla.js"
+    "./dist/vanilla": {
+      "types": "./dist/vanilla.d.ts",
+      "require": "./dist/vanilla.cjs.js",
+      "import": "./dist/vanilla.js"
     },
-    "./debug": {
-      "types": "./debug.d.ts",
-      "require": "./debug.cjs.js",
-      "import": "./debug.js"
+    "./dist/debug": {
+      "types": "./dist/debug.d.ts",
+      "require": "./dist/debug.cjs.js",
+      "import": "./dist/debug.js"
     }
   },
   "keywords": [
