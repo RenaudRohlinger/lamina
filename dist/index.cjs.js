@@ -46,12 +46,28 @@ var stringify__default = /*#__PURE__*/_interopDefaultLegacy(stringify);
 var tokenFunctions__default = /*#__PURE__*/_interopDefaultLegacy(tokenFunctions);
 var CustomShaderMaterial__default = /*#__PURE__*/_interopDefaultLegacy(CustomShaderMaterial);
 
+function isBlobUrl(url) {
+  return /^blob:/.test(url);
+}
+function isValidHttpUrl(url) {
+  return /^(http|https):\/\//.test(url);
+}
+function isDataUrl(url) {
+  return /^data:image\//.test(url);
+}
+function isTextureSrc(src) {
+  return isValidHttpUrl(src) || isDataUrl(src) || isBlobUrl(src);
+}
 function getUniform(value) {
-  if (typeof value === 'string') {
+  if (isTextureSrc(value)) {
+    return new THREE.TextureLoader().load(value, t => {
+      t.encoding = THREE.sRGBEncoding;
+    });
+  } else if (typeof value === 'string') {
     return new THREE.Color(value);
+  } else {
+    return value;
   }
-
-  return value;
 }
 function getSpecialParameters(label) {
   switch (label) {
@@ -89,7 +105,9 @@ function serializeProp(prop) {
   } else if (prop instanceof THREE.Color) {
     return '#' + prop.clone().getHexString();
   } else if (prop instanceof THREE.Texture) {
-    return prop.image.src;
+    var _prop$image;
+
+    return (_prop$image = prop.image) == null ? void 0 : _prop$image.src;
   }
 
   return typeof prop === 'number' ? roundToTwo(prop) : prop;
@@ -1628,10 +1646,12 @@ class LayerMaterial$1 extends CustomShaderMaterial__default["default"] {
   } = {}) {
     super({
       baseMaterial: ShadingTypes[lighting || 'basic'],
+      transparent: true,
       ...props
     });
     this.layers = [];
     this.lighting = 'basic';
+    this.__lamina__debuggerNeedsUpdate = false;
 
     const _baseColor = color || 'white';
 
@@ -1715,6 +1735,7 @@ class LayerMaterial$1 extends CustomShaderMaterial__default["default"] {
 
       return layer.getHash();
     });
+    this.__lamina__debuggerNeedsUpdate = true;
     const {
       uniforms,
       fragmentShader,
@@ -1851,7 +1872,7 @@ const LayerMaterial = /*#__PURE__*/React__default["default"].forwardRef(({
   const args = React.useMemo(() => [{
     lighting: props.lighting
   }], [props.lighting]);
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const layers = ref.current.__r3f.objects;
     const isSame = layers.length === ref.current.layers.length && layers.every((layer, i) => layer.uuid === ref.current.layers[i].uuid);
 

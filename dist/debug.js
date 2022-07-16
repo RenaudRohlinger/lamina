@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useRef } from 'react';
-import { useControls, button, LevaPanel, useCreateStore } from 'leva';
+import { useState, useLayoutEffect, useRef } from 'react';
+import { useControls, button, LevaPanel, folder, useCreateStore } from 'leva';
 import mergeRefs from 'react-merge-refs';
 import * as THREE from 'three';
-import { Vector3, Vector2, Vector4, Matrix3, Matrix4, Color as Color$1, Texture as Texture$1, MathUtils } from 'three';
+import { TextureLoader, sRGBEncoding, Color as Color$1, Vector3, Vector2, Vector4, Matrix3, Matrix4, Texture as Texture$1, MathUtils } from 'three';
 import hash from 'object-hash';
 import tokenize from 'glsl-tokenizer';
 import descope from 'glsl-token-descope';
@@ -12,12 +12,28 @@ import tokenFunctions from 'glsl-token-functions';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import { createRoot } from 'react-dom/client';
 
+function isBlobUrl(url) {
+  return /^blob:/.test(url);
+}
+function isValidHttpUrl$1(url) {
+  return /^(http|https):\/\//.test(url);
+}
+function isDataUrl(url) {
+  return /^data:image\//.test(url);
+}
+function isTextureSrc(src) {
+  return isValidHttpUrl$1(src) || isDataUrl(src) || isBlobUrl(src);
+}
 function getUniform(value) {
-  if (typeof value === 'string') {
+  if (isTextureSrc(value)) {
+    return new TextureLoader().load(value, t => {
+      t.encoding = sRGBEncoding;
+    });
+  } else if (typeof value === 'string') {
     return new Color$1(value);
+  } else {
+    return value;
   }
-
-  return value;
 }
 function getSpecialParameters(label) {
   switch (label) {
@@ -55,7 +71,9 @@ function serializeProp(prop) {
   } else if (prop instanceof Color$1) {
     return '#' + prop.clone().getHexString();
   } else if (prop instanceof Texture$1) {
-    return prop.image.src;
+    var _prop$image;
+
+    return (_prop$image = prop.image) == null ? void 0 : _prop$image.src;
   }
 
   return typeof prop === 'number' ? roundToTwo(prop) : prop;
@@ -1594,10 +1612,12 @@ class LayerMaterial extends CustomShaderMaterial {
   } = {}) {
     super({
       baseMaterial: ShadingTypes[lighting || 'basic'],
+      transparent: true,
       ...props
     });
     this.layers = [];
     this.lighting = 'basic';
+    this.__lamina__debuggerNeedsUpdate = false;
 
     const _baseColor = color || 'white';
 
@@ -1681,6 +1701,7 @@ class LayerMaterial extends CustomShaderMaterial {
 
       return layer.getHash();
     });
+    this.__lamina__debuggerNeedsUpdate = true;
     const {
       uniforms,
       fragmentShader,
@@ -1971,6 +1992,60 @@ function useAttach(ref, store) {
   }, []);
 }
 
+const ignoreList = ['uuid'];
+function useDebugLayers(ref, store) {
+  var _ref$current2;
+
+  const [opts, set] = useState({});
+  useControls(opts, {
+    store
+  }, [opts]);
+  useLayoutEffect(() => {
+    var _ref$current;
+
+    if ((_ref$current = ref.current) != null && _ref$current.__lamina__debuggerNeedsUpdate) {
+      const layers = ref.current.layers;
+      const serializedLayers = layers.map(layer => layer.serialize());
+      const o = {};
+      serializedLayers.forEach((layer, layerIndex) => {
+        const _o = {};
+        Object.entries(layer.currents).forEach(([k, val]) => {
+          const key = `${layerIndex}_${k}`;
+
+          if (!ignoreList.includes(k)) {
+            const rest = {
+              label: k,
+              onChange: v => {
+                // @ts-ignore
+                ref.current.layers[layerIndex][k] = v;
+              }
+            };
+
+            if (isTextureSrc(val)) {
+              _o[key] = {
+                image: val,
+                ...rest
+              };
+            } else {
+              _o[key] = {
+                value: val,
+                ...rest
+              };
+            }
+          }
+        });
+        o[`${layer.constructor} [#${layerIndex}]`] = folder(_o, {
+          collapsed: true
+        });
+      });
+      ref.current.__lamina__debuggerNeedsUpdate = false;
+      set({
+        Layers: folder(o)
+      });
+    }
+  }, [(_ref$current2 = ref.current) == null ? void 0 : _ref$current2.__lamina__debuggerNeedsUpdate]);
+}
+
 const LaminaDebugger = /*#__PURE__*/React.forwardRef(({
   children,
   ...props
@@ -1978,7 +2053,9 @@ const LaminaDebugger = /*#__PURE__*/React.forwardRef(({
   const ref = useRef(null);
   const store = useCreateStore();
   useExports(ref, store);
-  useAttach(ref, store);
+  useAttach(ref, store); // useDebugBaseMaterial(ref, store)
+
+  useDebugLayers(ref, store);
 
   if (!Array.isArray(children)) {
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.cloneElement(children, {

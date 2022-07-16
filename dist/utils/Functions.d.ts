@@ -1,4 +1,9 @@
 import { LayerMaterialProps } from '../types';
+export declare function isBlobUrl(url: string): boolean;
+export declare function isValidHttpUrl(url: string): boolean;
+export declare function isDataUrl(url: string): boolean;
+export declare function toDataUrl(url: string, callback: (data: string) => void): void;
+export declare function isTextureSrc(src: string): boolean;
 export declare function getUniform(value: any): any;
 export declare function getSpecialParameters(label: string): {
     min: number;

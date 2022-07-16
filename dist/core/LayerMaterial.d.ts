@@ -16,6 +16,7 @@ declare type AllMaterialParams = MeshPhongMaterialParameters | MeshPhysicalMater
 declare class LayerMaterial extends CustomShaderMaterial {
     layers: Abstract[];
     lighting: ShadingType;
+    __lamina__debuggerNeedsUpdate: boolean;
     constructor({ color, alpha, lighting, layers, ...props }?: LayerMaterialParameters & AllMaterialParams);
     genShaders(): {
         uniforms: any;

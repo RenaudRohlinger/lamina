@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vector3, Vector2, Vector4, Matrix3, Matrix4, Color as Color$1, Texture as Texture$1, MathUtils } from 'three';
+import { TextureLoader, sRGBEncoding, Color as Color$1, Vector3, Vector2, Vector4, Matrix3, Matrix4, Texture as Texture$1, MathUtils } from 'three';
 import hash from 'object-hash';
 import tokenize from 'glsl-tokenizer';
 import descope from 'glsl-token-descope';
@@ -7,12 +7,28 @@ import stringify from 'glsl-token-string';
 import tokenFunctions from 'glsl-token-functions';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 
+function isBlobUrl(url) {
+  return /^blob:/.test(url);
+}
+function isValidHttpUrl(url) {
+  return /^(http|https):\/\//.test(url);
+}
+function isDataUrl(url) {
+  return /^data:image\//.test(url);
+}
+function isTextureSrc(src) {
+  return isValidHttpUrl(src) || isDataUrl(src) || isBlobUrl(src);
+}
 function getUniform(value) {
-  if (typeof value === 'string') {
+  if (isTextureSrc(value)) {
+    return new TextureLoader().load(value, t => {
+      t.encoding = sRGBEncoding;
+    });
+  } else if (typeof value === 'string') {
     return new Color$1(value);
+  } else {
+    return value;
   }
-
-  return value;
 }
 function getSpecialParameters(label) {
   switch (label) {
@@ -50,7 +66,9 @@ function serializeProp(prop) {
   } else if (prop instanceof Color$1) {
     return '#' + prop.clone().getHexString();
   } else if (prop instanceof Texture$1) {
-    return prop.image.src;
+    var _prop$image;
+
+    return (_prop$image = prop.image) == null ? void 0 : _prop$image.src;
   }
 
   return typeof prop === 'number' ? roundToTwo(prop) : prop;
@@ -1589,10 +1607,12 @@ class LayerMaterial extends CustomShaderMaterial {
   } = {}) {
     super({
       baseMaterial: ShadingTypes[lighting || 'basic'],
+      transparent: true,
       ...props
     });
     this.layers = [];
     this.lighting = 'basic';
+    this.__lamina__debuggerNeedsUpdate = false;
 
     const _baseColor = color || 'white';
 
@@ -1676,6 +1696,7 @@ class LayerMaterial extends CustomShaderMaterial {
 
       return layer.getHash();
     });
+    this.__lamina__debuggerNeedsUpdate = true;
     const {
       uniforms,
       fragmentShader,

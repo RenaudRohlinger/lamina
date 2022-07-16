@@ -44,12 +44,28 @@ var stringify__default = /*#__PURE__*/_interopDefaultLegacy(stringify);
 var tokenFunctions__default = /*#__PURE__*/_interopDefaultLegacy(tokenFunctions);
 var CustomShaderMaterial__default = /*#__PURE__*/_interopDefaultLegacy(CustomShaderMaterial);
 
+function isBlobUrl(url) {
+  return /^blob:/.test(url);
+}
+function isValidHttpUrl$1(url) {
+  return /^(http|https):\/\//.test(url);
+}
+function isDataUrl(url) {
+  return /^data:image\//.test(url);
+}
+function isTextureSrc(src) {
+  return isValidHttpUrl$1(src) || isDataUrl(src) || isBlobUrl(src);
+}
 function getUniform(value) {
-  if (typeof value === 'string') {
+  if (isTextureSrc(value)) {
+    return new THREE.TextureLoader().load(value, t => {
+      t.encoding = THREE.sRGBEncoding;
+    });
+  } else if (typeof value === 'string') {
     return new THREE.Color(value);
+  } else {
+    return value;
   }
-
-  return value;
 }
 function getSpecialParameters(label) {
   switch (label) {
@@ -87,7 +103,9 @@ function serializeProp(prop) {
   } else if (prop instanceof THREE.Color) {
     return '#' + prop.clone().getHexString();
   } else if (prop instanceof THREE.Texture) {
-    return prop.image.src;
+    var _prop$image;
+
+    return (_prop$image = prop.image) == null ? void 0 : _prop$image.src;
   }
 
   return typeof prop === 'number' ? roundToTwo(prop) : prop;
@@ -1626,10 +1644,12 @@ class LayerMaterial extends CustomShaderMaterial__default["default"] {
   } = {}) {
     super({
       baseMaterial: ShadingTypes[lighting || 'basic'],
+      transparent: true,
       ...props
     });
     this.layers = [];
     this.lighting = 'basic';
+    this.__lamina__debuggerNeedsUpdate = false;
 
     const _baseColor = color || 'white';
 
@@ -1713,6 +1733,7 @@ class LayerMaterial extends CustomShaderMaterial__default["default"] {
 
       return layer.getHash();
     });
+    this.__lamina__debuggerNeedsUpdate = true;
     const {
       uniforms,
       fragmentShader,
@@ -2003,6 +2024,60 @@ function useAttach(ref, store) {
   }, []);
 }
 
+const ignoreList = ['uuid'];
+function useDebugLayers(ref, store) {
+  var _ref$current2;
+
+  const [opts, set] = React.useState({});
+  leva.useControls(opts, {
+    store
+  }, [opts]);
+  React.useLayoutEffect(() => {
+    var _ref$current;
+
+    if ((_ref$current = ref.current) != null && _ref$current.__lamina__debuggerNeedsUpdate) {
+      const layers = ref.current.layers;
+      const serializedLayers = layers.map(layer => layer.serialize());
+      const o = {};
+      serializedLayers.forEach((layer, layerIndex) => {
+        const _o = {};
+        Object.entries(layer.currents).forEach(([k, val]) => {
+          const key = `${layerIndex}_${k}`;
+
+          if (!ignoreList.includes(k)) {
+            const rest = {
+              label: k,
+              onChange: v => {
+                // @ts-ignore
+                ref.current.layers[layerIndex][k] = v;
+              }
+            };
+
+            if (isTextureSrc(val)) {
+              _o[key] = {
+                image: val,
+                ...rest
+              };
+            } else {
+              _o[key] = {
+                value: val,
+                ...rest
+              };
+            }
+          }
+        });
+        o[`${layer.constructor} [#${layerIndex}]`] = leva.folder(_o, {
+          collapsed: true
+        });
+      });
+      ref.current.__lamina__debuggerNeedsUpdate = false;
+      set({
+        Layers: leva.folder(o)
+      });
+    }
+  }, [(_ref$current2 = ref.current) == null ? void 0 : _ref$current2.__lamina__debuggerNeedsUpdate]);
+}
+
 const LaminaDebugger = /*#__PURE__*/React__namespace.forwardRef(({
   children,
   ...props
@@ -2010,7 +2085,9 @@ const LaminaDebugger = /*#__PURE__*/React__namespace.forwardRef(({
   const ref = React.useRef(null);
   const store = leva.useCreateStore();
   useExports(ref, store);
-  useAttach(ref, store);
+  useAttach(ref, store); // useDebugBaseMaterial(ref, store)
+
+  useDebugLayers(ref, store);
 
   if (!Array.isArray(children)) {
     return /*#__PURE__*/React__namespace.createElement(React__namespace.Fragment, null, /*#__PURE__*/React__namespace.cloneElement(children, {

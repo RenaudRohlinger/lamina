@@ -1,10 +1,10 @@
 import _extends from '@babel/runtime/helpers/esm/extends';
 import { extend, useLoader } from '@react-three/fiber';
 import * as React from 'react';
-import React__default, { useMemo, useEffect } from 'react';
+import React__default, { useMemo, useLayoutEffect } from 'react';
 import mergeRefs from 'react-merge-refs';
 import * as THREE from 'three';
-import { Vector3, Vector2, Vector4, Matrix3, Matrix4, Color as Color$2, Texture as Texture$2, MathUtils } from 'three';
+import { TextureLoader, sRGBEncoding, Color as Color$2, Vector3, Vector2, Vector4, Matrix3, Matrix4, Texture as Texture$2, MathUtils } from 'three';
 import hash from 'object-hash';
 import tokenize from 'glsl-tokenizer';
 import descope from 'glsl-token-descope';
@@ -12,12 +12,28 @@ import stringify from 'glsl-token-string';
 import tokenFunctions from 'glsl-token-functions';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 
+function isBlobUrl(url) {
+  return /^blob:/.test(url);
+}
+function isValidHttpUrl(url) {
+  return /^(http|https):\/\//.test(url);
+}
+function isDataUrl(url) {
+  return /^data:image\//.test(url);
+}
+function isTextureSrc(src) {
+  return isValidHttpUrl(src) || isDataUrl(src) || isBlobUrl(src);
+}
 function getUniform(value) {
-  if (typeof value === 'string') {
+  if (isTextureSrc(value)) {
+    return new TextureLoader().load(value, t => {
+      t.encoding = sRGBEncoding;
+    });
+  } else if (typeof value === 'string') {
     return new Color$2(value);
+  } else {
+    return value;
   }
-
-  return value;
 }
 function getSpecialParameters(label) {
   switch (label) {
@@ -55,7 +71,9 @@ function serializeProp(prop) {
   } else if (prop instanceof Color$2) {
     return '#' + prop.clone().getHexString();
   } else if (prop instanceof Texture$2) {
-    return prop.image.src;
+    var _prop$image;
+
+    return (_prop$image = prop.image) == null ? void 0 : _prop$image.src;
   }
 
   return typeof prop === 'number' ? roundToTwo(prop) : prop;
@@ -1594,10 +1612,12 @@ class LayerMaterial$1 extends CustomShaderMaterial {
   } = {}) {
     super({
       baseMaterial: ShadingTypes[lighting || 'basic'],
+      transparent: true,
       ...props
     });
     this.layers = [];
     this.lighting = 'basic';
+    this.__lamina__debuggerNeedsUpdate = false;
 
     const _baseColor = color || 'white';
 
@@ -1681,6 +1701,7 @@ class LayerMaterial$1 extends CustomShaderMaterial {
 
       return layer.getHash();
     });
+    this.__lamina__debuggerNeedsUpdate = true;
     const {
       uniforms,
       fragmentShader,
@@ -1817,7 +1838,7 @@ const LayerMaterial = /*#__PURE__*/React__default.forwardRef(({
   const args = useMemo(() => [{
     lighting: props.lighting
   }], [props.lighting]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const layers = ref.current.__r3f.objects;
     const isSame = layers.length === ref.current.layers.length && layers.every((layer, i) => layer.uuid === ref.current.layers[i].uuid);
 
