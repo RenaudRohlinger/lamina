@@ -16,12 +16,12 @@
       "require": "./dist/index.cjs.js",
       "import": "./dist/index.js"
     },
-    "./dist/vanilla": {
+    "./vanilla": {
       "types": "./dist/vanilla.d.ts",
       "require": "./dist/vanilla.cjs.js",
       "import": "./dist/vanilla.js"
     },
-    "./dist/debug": {
+    "./debug": {
       "types": "./dist/debug.d.ts",
       "require": "./dist/debug.cjs.js",
       "import": "./dist/debug.js"
